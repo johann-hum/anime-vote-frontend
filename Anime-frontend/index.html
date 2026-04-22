@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Anime Vote System</title>
+    <style>
+        /* nota: cómo se ve todo */
+        body { font-family: 'Segoe UI', sans-serif; background-color: #1a1a1a; color: white; text-align: center; }
+        .grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; padding: 20px; }
+        .card { background: #2d2d2d; border-radius: 12px; padding: 20px; width: 200px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        button { background: #ff4757; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #ff6b81; transform: scale(1.05); }
+    </style>
+</head>
+<body>
+<div id="registro-seccion" style="margin-bottom: 50px; padding: 20px; background: #2d2d2d; border-radius: 10px;">
+    <h2>Registrarse</h2>
+    <input type="text" id="reg-usuario" placeholder="Nombre de usuario">
+    <input type="password" id="reg-password" placeholder="Contraseña">
+    <button onclick="registrarNuevoUsuario()">Crear Cuenta</button>
+</div>
+<div id="seccion-auth" style="display: flex; gap: 20px; justify-content: center; padding: 20px;">
+    <div style="background: #2d2d2d; padding: 20px; border-radius: 10px;">
+        <h3>Ya tengo cuenta</h3>
+        <input type="text" id="login-user" placeholder="Usuario">
+        <input type="password" id="login-pass" placeholder="Contraseña">
+        <button onclick="iniciarSesion()">Entrar</button>
+    </div>
+</div>
+    <h1>Ranking de Animes</h1>
+    <div id="contenedor-animes" class="grid">
+        </div>
+
+        <script>
+    const URL_API = "http://localhost:8080/api/animes";
+async function registrarNuevoUsuario() {
+    const username = document.getElementById("reg-usuario").value;
+    const password = document.getElementById("reg-password").value;
+
+    const datos = {
+        username: username,
+        password: password
+    };
+
+    try {
+        const respuesta = await fetch("http://localhost:8080/api/usuarios/registrar", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(datos)
+        });
+
+        if (respuesta.ok) {
+            alert("¡Usuario registrado con éxito! Ya puedes votar.");
+            document.getElementById("registro-seccion").style.display = "none";
+        } else {
+            const errorMsg = await respuesta.text();
+            alert("Error: " + errorMsg);
+        }
+    } catch (error) {
+        console.error("Error en el registro:", error);
+    }
+}
+    // 1. Cargar animes desde MySQL
+    async function obtenerAnimes() {
+        try {
+            const respuesta = await fetch(URL_API);
+            if (!respuesta.ok) throw new Error("Error en la respuesta del servidor");
+            const datos = await respuesta.json();
+            dibujarTarjetas(datos);
+        } catch (error) {
+            console.error("No se pudo conectar con IntelliJ:", error);
+        }
+    }
+
+    // 2. Dibujar las tarjetas dinámicamente
+    function dibujarTarjetas(animes) {
+        const contenedor = document.getElementById("contenedor-animes");
+        contenedor.innerHTML = ""; // Limpiamos los ejemplos estáticos
+
+        const yaVoto = localStorage.getItem('yaVoto');
+
+        animes.forEach(anime => {
+            contenedor.innerHTML += `
+                <div class="card">
+                    <h3>${anime.nombre}</h3>
+                    <p>Votos actuales: <strong>${anime.votos}</strong></p>
+                    <button 
+                        onclick="enviarVoto(${anime.id})" 
+                        ${yaVoto ? 'disabled style="background:gray"' : ''}>
+                        ${yaVoto ? 'Ya votaste' : '¡Votar!'}
+                    </button>
+                </div>
+            `;
+        });
+    }
+
+    // 3. Función para votar de verdad
+    async function enviarVoto(id) {
+        try {
+            const respuesta = await fetch(URL_API + "/" + id + "/votar", { method: 'POST' });
+            if (respuesta.ok) {
+                localStorage.setItem('yaVoto', 'true'); // Ponemos el sello
+                obtenerAnimes(); // Refrescamos los números
+                alert("¡Voto guardado en MySQL!");
+            }
+        } catch (error) {
+            alert("Error al conectar con el servidor.");
+        }
+    }
+
+    // Arrancamos la carga
+    obtenerAnimes();
+</script>
+</body>
+</html>
